@@ -140,7 +140,7 @@ func (t *SampleChaincode) depositFund(stub shim.ChaincodeStubInterface, args []s
 		return nil, errors.New(jsonResp)
 	}
 
-	err = json.Unmarshal(valAsBytes, db)
+	err = json.Unmarshal(valAsBytes, &db)
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to retrieve account details: " + err.Error() + "\"}"
 		return nil, errors.New(jsonResp)
@@ -203,7 +203,7 @@ func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []
 		return nil, errors.New(jsonResp)
 	}
 
-	err = json.Unmarshal(valAsBytes, db)
+	err = json.Unmarshal(valAsBytes, &db)
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to retrieve account details: " + err.Error() + "\"}"
 		return nil, errors.New(jsonResp)
