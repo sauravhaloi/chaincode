@@ -25,10 +25,6 @@ type SampleChaincode struct {
 
 // Init method is called when the chaincode is first deployed onto the blockchain network
 func (t *SampleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	if len(args) > 0 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 0")
-	}
-
 	var customerName string // Name of the customer
 	var currentBalance int  // Current account balance of the customer
 	var err error
