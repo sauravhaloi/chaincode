@@ -7,8 +7,8 @@ import (
 
 	"time"
 
-	"github.com/fzzy/radix/redis"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/mediocregopher/radix.v2/redis"
 )
 
 // External database details
@@ -39,10 +39,16 @@ func (t *SampleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	redisAUTH = args[1]
 
 	// connect to database
-	db, err = redis.DialTimeout("tcp", "127.0.0.1:6379", time.Duration(10)*time.Second)
+	db, err = redis.DialTimeout("tcp", redisURL, time.Duration(10)*time.Second)
 	if err != nil {
 		jsonResp = "{\"Error\":\"unable to connect database: " + err.Error() + "\"}"
 		logger.Error(jsonResp)
+		return nil, errors.New(jsonResp)
+	}
+
+	err = db.Cmd("AUTH", redisAUTH).Err
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to authenticate to DB: " + err.Error() + "\"}"
 		return nil, errors.New(jsonResp)
 	}
 
@@ -56,7 +62,11 @@ func (t *SampleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	logger.Info("Customer: %s, Available Balance: %d", customerName, currentBalance)
 
 	// Save the Customer info
-	db.Cmd("SET", customerName, currentBalance)
+	err = db.Cmd("SET", customerName, currentBalance).Err
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to set account details: " + err.Error() + "\"}"
+		return nil, errors.New(jsonResp)
+	}
 
 	// Write the state to the ledger
 	err = stub.PutState("IBI-CC[init]: "+time.Now().String(), []byte(args[0]))
