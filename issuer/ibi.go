@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"strconv"
 
-	"encoding/json"
-
-	"io/ioutil"
-
 	"time"
 
+	"github.com/fzzy/radix/redis"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
-var logger = shim.NewLogger("ftLogger")
+// External database details
+var (
+	db        *redis.Client
+	redisURL  string
+	redisAUTH string
+)
 
-// cbsDB is a JSON file which emulates a private own database
-var cbsDB = "/tmp/ibi_cbs.json"
+var logger = shim.NewLogger("ftLogger")
 
 // SampleChaincode struct required to implement the shim.Chaincode interface
 type SampleChaincode struct {
@@ -25,35 +26,37 @@ type SampleChaincode struct {
 
 // Init method is called when the chaincode is first deployed onto the blockchain network
 func (t *SampleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+	var jsonResp string
 	var customerName string // Name of the customer
 	var currentBalance int  // Current account balance of the customer
 	var err error
 
-	if len(args) != 2 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 2")
+	if len(args) != 4 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 4")
+	}
+
+	redisURL = args[0]
+	redisAUTH = args[1]
+
+	// connect to database
+	db, err = redis.DialTimeout("tcp", "127.0.0.1:6379", time.Duration(10)*time.Second)
+	if err != nil {
+		jsonResp = "{\"Error\":\"unable to connect database: " + err.Error() + "\"}"
+		logger.Error(jsonResp)
+		return nil, errors.New(jsonResp)
 	}
 
 	// Initialize the chaincode
-	customerName = args[0]
-	currentBalance, err = strconv.Atoi(args[1])
+	customerName = args[1]
+	currentBalance, err = strconv.Atoi(args[2])
 	if err != nil {
 		return nil, errors.New("Expecting integer value for customer account balance")
 	}
 
-	logger.Info("Customer: %s Available Balance: %d", customerName, currentBalance)
+	logger.Info("Customer: %s, Available Balance: %d", customerName, currentBalance)
 
 	// Save the Customer info
-	db := make(map[string]interface{})
-	db["cName"] = customerName
-	db["cBalance"] = currentBalance
-
-	jsonDB, err := json.Marshal(db)
-	if err != nil {
-		logger.Error("Unable to initialize core private database")
-		return nil, err
-	}
-
-	ioutil.WriteFile(cbsDB, jsonDB, 0777)
+	db.Cmd("SET", customerName, currentBalance)
 
 	// Write the state to the ledger
 	err = stub.PutState("IBI-CC[init]: "+time.Now().String(), []byte(args[0]))
@@ -106,9 +109,10 @@ func (t *SampleChaincode) getAccountBalance(stub shim.ChaincodeStubInterface, ar
 	}
 
 	name = args[0]
-	valAsbytes, err := ioutil.ReadFile(cbsDB)
+
+	valAsbytes, err := db.Cmd("GET", name).Bytes()
 	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to get account balance for " + name + "\"}"
+		jsonResp = "{\"Error\":\"Failed to get account balance for " + name + err.Error() + "\"}"
 		return nil, errors.New(jsonResp)
 	}
 
@@ -121,7 +125,6 @@ func (t *SampleChaincode) depositFund(stub shim.ChaincodeStubInterface, args []s
 	var name, jsonResp string
 	var value, currentBalance, newBalance int
 	var err error
-	var db = make(map[string]interface{})
 
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the customer and value to set")
@@ -134,43 +137,17 @@ func (t *SampleChaincode) depositFund(stub shim.ChaincodeStubInterface, args []s
 		return nil, errors.New(jsonResp)
 	}
 
-	valAsBytes, err := ioutil.ReadFile(cbsDB)
-	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to connect to DB: + " + err.Error() + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	err = json.Unmarshal(valAsBytes, &db)
+	currentBalance, err = db.Cmd("GET", name).Int()
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to retrieve account details: " + err.Error() + "\"}"
 		return nil, errors.New(jsonResp)
 	}
 
-	if db["cName"].(string) != name {
-		jsonResp = "{\"Error\":\"Invalid customer name!\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	currentBalance, err = strconv.Atoi(db["cBalance"].(string))
-	if err != nil {
-		jsonResp = "{\"Error\":\"Internal error in fund deposit: " + err.Error() + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
 	newBalance = value + currentBalance
 
-	db["cBalance"] = strconv.Itoa(newBalance)
-
-	jsonDB, err := json.Marshal(db)
+	err = db.Cmd("SET", name, newBalance).Err
 	if err != nil {
 		jsonResp = "{\"Error\":\"Error in fund deposit: " + err.Error() + "\"}"
-		logger.Error(jsonResp)
-		return nil, errors.New(jsonResp)
-	}
-
-	err = ioutil.WriteFile(cbsDB, jsonDB, 0777)
-	if err != nil {
-		jsonResp = "{\"Error\":\"Error in DB commit: " + err.Error() + "\"}"
 		logger.Error(jsonResp)
 		return nil, errors.New(jsonResp)
 	}
@@ -184,7 +161,6 @@ func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []
 	var name, jsonResp string
 	var value, currentBalance, newBalance int
 	var err error
-	var db = make(map[string]interface{})
 
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the customer and value to set")
@@ -197,26 +173,9 @@ func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []
 		return nil, errors.New(jsonResp)
 	}
 
-	valAsBytes, err := ioutil.ReadFile(cbsDB)
+	currentBalance, err = db.Cmd("GET", name).Int()
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to connect to DB: + " + err.Error() + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	err = json.Unmarshal(valAsBytes, &db)
-	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to retrieve account details: " + err.Error() + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	if db["cName"].(string) != name {
-		jsonResp = "{\"Error\":\"Invalid customer name!\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	currentBalance, err = strconv.Atoi(db["cBalance"].(string))
-	if err != nil {
-		jsonResp = "{\"Error\":\"Internal error in fund withdraw: " + err.Error() + "\"}"
 		return nil, errors.New(jsonResp)
 	}
 
@@ -226,20 +185,11 @@ func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []
 		return nil, errors.New(jsonResp)
 	}
 
-	newBalance = value + currentBalance
+	newBalance = currentBalance - value
 
-	db["cBalance"] = strconv.Itoa(newBalance)
-
-	jsonDB, err := json.Marshal(db)
+	err = db.Cmd("SET", name, newBalance).Err
 	if err != nil {
 		jsonResp = "{\"Error\":\"Error in fund withdraw: " + err.Error() + "\"}"
-		logger.Error(jsonResp)
-		return nil, errors.New(jsonResp)
-	}
-
-	err = ioutil.WriteFile(cbsDB, jsonDB, 0777)
-	if err != nil {
-		jsonResp = "{\"Error\":\"Error in DB commit: " + err.Error() + "\"}"
 		logger.Error(jsonResp)
 		return nil, errors.New(jsonResp)
 	}
@@ -248,12 +198,14 @@ func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []
 }
 
 func main() {
+	var err error
 	lld, _ := shim.LogLevel("DEBUG")
 	fmt.Println(lld)
 
 	logger.SetLevel(lld)
 	fmt.Println(logger.IsEnabledFor(lld))
-	err := shim.Start(new(SampleChaincode))
+
+	err = shim.Start(new(SampleChaincode))
 	if err != nil {
 		fmt.Println("Could not start SampleChaincode")
 	} else {
