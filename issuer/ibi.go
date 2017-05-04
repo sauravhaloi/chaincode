@@ -26,15 +26,15 @@ func (t *SampleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 
 	account = make(map[string]int)
 
-	if len(args) != 4 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 4")
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2")
 	}
 
 	// Initialize the chaincode
 	customerName = args[0]
 	currentBalance, err = strconv.Atoi(args[1])
 	if err != nil {
-		return nil, errors.New("Expecting integer value for customer account balance")
+		return nil, errors.New("Expecting integer value for customer account balance: " + err.Error())
 	}
 
 	logger.Info("Customer: %s, Available Balance: %d", customerName, currentBalance)
