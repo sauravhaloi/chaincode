@@ -8,15 +8,9 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/mediocregopher/radix.v2/redis"
 )
 
-// External database details
-var (
-	db        *redis.Client
-	redisURL  string
-	redisAUTH string
-)
+var account map[string]int
 
 var logger = shim.NewLogger("ftLogger")
 
@@ -26,35 +20,19 @@ type SampleChaincode struct {
 
 // Init method is called when the chaincode is first deployed onto the blockchain network
 func (t *SampleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	var jsonResp string
 	var customerName string // Name of the customer
 	var currentBalance int  // Current account balance of the customer
 	var err error
+
+	account = make(map[string]int)
 
 	if len(args) != 4 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 4")
 	}
 
-	redisURL = args[0]
-	redisAUTH = args[1]
-
-	// connect to database
-	db, err = redis.DialTimeout("tcp", redisURL, time.Duration(10)*time.Second)
-	if err != nil {
-		jsonResp = "{\"Error\":\"unable to connect database: " + err.Error() + "\"}"
-		logger.Error(jsonResp)
-		return nil, errors.New(jsonResp)
-	}
-
-	err = db.Cmd("AUTH", redisAUTH).Err
-	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to authenticate to DB: " + err.Error() + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
 	// Initialize the chaincode
-	customerName = args[1]
-	currentBalance, err = strconv.Atoi(args[2])
+	customerName = args[0]
+	currentBalance, err = strconv.Atoi(args[1])
 	if err != nil {
 		return nil, errors.New("Expecting integer value for customer account balance")
 	}
@@ -62,11 +40,7 @@ func (t *SampleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	logger.Info("Customer: %s, Available Balance: %d", customerName, currentBalance)
 
 	// Save the Customer info
-	err = db.Cmd("SET", customerName, currentBalance).Err
-	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to set account details: " + err.Error() + "\"}"
-		return nil, errors.New(jsonResp)
-	}
+	account[customerName] = currentBalance
 
 	// Write the state to the ledger
 	err = stub.PutState("IBI-CC[init]: "+time.Now().String(), []byte(args[0]))
@@ -120,7 +94,7 @@ func (t *SampleChaincode) getAccountBalance(stub shim.ChaincodeStubInterface, ar
 
 	name = args[0]
 
-	valAsbytes, err := db.Cmd("GET", name).Bytes()
+	valAsbytes := []byte(strconv.Itoa(account[name]))
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to get account balance for " + name + err.Error() + "\"}"
 		return nil, errors.New(jsonResp)
@@ -147,20 +121,10 @@ func (t *SampleChaincode) depositFund(stub shim.ChaincodeStubInterface, args []s
 		return nil, errors.New(jsonResp)
 	}
 
-	currentBalance, err = db.Cmd("GET", name).Int()
-	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to retrieve account details: " + err.Error() + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
+	currentBalance = account[name]
 	newBalance = value + currentBalance
 
-	err = db.Cmd("SET", name, newBalance).Err
-	if err != nil {
-		jsonResp = "{\"Error\":\"Error in fund deposit: " + err.Error() + "\"}"
-		logger.Error(jsonResp)
-		return nil, errors.New(jsonResp)
-	}
+	account[name] = newBalance
 
 	return nil, nil
 }
@@ -183,11 +147,7 @@ func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []
 		return nil, errors.New(jsonResp)
 	}
 
-	currentBalance, err = db.Cmd("GET", name).Int()
-	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to connect to DB: + " + err.Error() + "\"}"
-		return nil, errors.New(jsonResp)
-	}
+	currentBalance = account[name]
 
 	if value > currentBalance {
 		jsonResp = "{\"Error\":\"Insufficient Fund in account. Aborting...\"}"
@@ -197,12 +157,7 @@ func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []
 
 	newBalance = currentBalance - value
 
-	err = db.Cmd("SET", name, newBalance).Err
-	if err != nil {
-		jsonResp = "{\"Error\":\"Error in fund withdraw: " + err.Error() + "\"}"
-		logger.Error(jsonResp)
-		return nil, errors.New(jsonResp)
-	}
+	account[name] = newBalance
 
 	return nil, nil
 }
