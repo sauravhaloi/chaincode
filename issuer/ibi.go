@@ -10,7 +10,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
-var account map[string]int
+var account = make(map[string]int)
 
 var logger = shim.NewLogger("ftLogger")
 
@@ -23,8 +23,6 @@ func (t *SampleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	var customerName string // Name of the customer
 	var currentBalance int  // Current account balance of the customer
 	var err error
-
-	account = make(map[string]int)
 
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2")
@@ -85,8 +83,7 @@ func (t *SampleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 
 func (t *SampleChaincode) getAccountBalance(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	logger.Info("Running getAccountBalance")
-	var name, jsonResp string
-	var err error
+	var name string
 
 	if len(args) != 1 {
 		return nil, errors.New("Incorrect number of arguments. Expecting name of the var to query")
@@ -95,10 +92,6 @@ func (t *SampleChaincode) getAccountBalance(stub shim.ChaincodeStubInterface, ar
 	name = args[0]
 
 	valAsbytes := []byte(strconv.Itoa(account[name]))
-	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to get account balance for " + name + err.Error() + "\"}"
-		return nil, errors.New(jsonResp)
-	}
 
 	return valAsbytes, nil
 }
@@ -126,7 +119,9 @@ func (t *SampleChaincode) depositFund(stub shim.ChaincodeStubInterface, args []s
 
 	account[name] = newBalance
 
-	return nil, nil
+	valAsbytes := []byte(strconv.Itoa(account[name]))
+
+	return valAsbytes, nil
 }
 
 func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -159,7 +154,9 @@ func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []
 
 	account[name] = newBalance
 
-	return nil, nil
+	valAsbytes := []byte(strconv.Itoa(account[name]))
+
+	return valAsbytes, nil
 }
 
 func main() {
