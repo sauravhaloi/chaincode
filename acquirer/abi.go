@@ -8,6 +8,8 @@ import (
 
 	"strings"
 
+	"log"
+
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/util"
 )
@@ -66,6 +68,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		name = strings.Split(customer, ",")[0]
 		amount = strings.Split(customer, ",")[1]
 		queryArgs := util.ToChaincodeArgs(f, name, amount)
+
+		log.Print("Query Args: ", queryArgs)
 
 		response, err = stub.QueryChaincode(chaincodeURL, queryArgs)
 		if err != nil {
