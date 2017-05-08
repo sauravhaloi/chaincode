@@ -52,8 +52,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 
 	switch operation {
 	case "GetAccountBalance":
-		f := "Query"
-		queryArgs := util.ToChaincodeArgs(f, "GetAccountBalance", customer)
+		f := "GetAccountBalance"
+		queryArgs := util.ToChaincodeArgs(f, customer)
 		response, err = stub.QueryChaincode(chaincodeURL, queryArgs)
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to query chaincode. Got error: %s", err.Error())
@@ -62,10 +62,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		}
 
 	case "WithdrawFund":
-		f := "Invoke"
+		f := "Withdraw"
 		name = strings.Split(customer, ",")[0]
 		amount = strings.Split(customer, ",")[1]
-		queryArgs := util.ToChaincodeArgs(f, "Withdraw", name, amount)
+		queryArgs := util.ToChaincodeArgs(f, name, amount)
 
 		response, err = stub.QueryChaincode(chaincodeURL, queryArgs)
 		if err != nil {
