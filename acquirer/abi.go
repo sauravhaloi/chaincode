@@ -8,8 +8,6 @@ import (
 
 	"strings"
 
-	"log"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/util"
 )
@@ -44,7 +42,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	var response []byte
 	var err error
 
-	log.Print("Args: ", args)
+	fmt.Println("Args: ", args)
 
 	if len(args) != 3 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 3")
@@ -71,7 +69,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		amount = strings.Split(customer, ",")[1]
 		queryArgs := util.ToChaincodeArgs(f, name, amount)
 
-		log.Print("Query Args: ", queryArgs)
+		fmt.Println("Query Args: ", queryArgs)
 
 		response, err = stub.QueryChaincode(chaincodeURL, queryArgs)
 		if err != nil {
