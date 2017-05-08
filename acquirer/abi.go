@@ -74,31 +74,34 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 			return nil, errors.New(jsonResp)
 		}
 
+		// transaction was successful, charge Issuer
+		settlement, err := strconv.Atoi(amount)
+		if err != nil {
+			return nil, err
+		}
+
+		settlement = settlement + serviceCharge
+
+		state = fmt.Sprintf("IBI owes ABI " + strconv.Itoa(settlement))
+
+		// Write amount which IBI owes to ABI back to the ledger
+		err = stub.PutState("IBI->ABI", []byte(state))
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("Invoke chaincode successful. IBI Owes ABI %d\n", settlement)
+		return []byte(state), nil
+
 	default:
 		jsonResp = "{\"Error\":\"Invalid operaton requested: " + operation + "\"}"
 		return nil, errors.New(jsonResp)
 	}
 
 	jsonResp = "{\"Response\":\"" + string(response) + "\"}"
+	fmt.Printf("Operation: %s | Response: %s", operation, jsonResp)
 
-	// transaction was successful, charge Issuer
-	settlement, err := strconv.Atoi(amount)
-	if err != nil {
-		return nil, err
-	}
-
-	settlement = settlement + serviceCharge
-
-	state = fmt.Sprintf("IBI owes ABI " + strconv.Itoa(settlement))
-
-	// Write amount which IBI owes to ABI back to the ledger
-	err = stub.PutState("IBI->ABI", []byte(state))
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("Invoke chaincode successful. IBI Owes ABI %d\n", settlement)
-	return []byte(state), nil
+	return []byte(jsonResp), nil
 }
 
 // Query callback representing the query of a chaincode
