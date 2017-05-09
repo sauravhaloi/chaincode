@@ -71,7 +71,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 
 		fmt.Println("Query Args: ", queryArgs)
 
-		response, err = stub.QueryChaincode(chaincodeURL, queryArgs)
+		response, err = stub.InvokeChaincode(chaincodeURL, queryArgs)
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", err.Error())
 			jsonResp = "{\"Error\":\"" + errStr + "\"}"
