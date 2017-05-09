@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	"strings"
 
@@ -27,9 +26,10 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		return nil, errors.New("Incorrect number of arguments. Expecting 0")
 	}
 
-	// Write the state to the ledger
-	err = stub.PutState("IBI-CC[init]: "+time.Now().String(), []byte("starting ABI chaincode"))
+	// Initialize the chaincode
+	err = stub.PutState("IBI->ABI", []byte(strconv.Itoa(0)))
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
