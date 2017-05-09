@@ -41,6 +41,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	var jsonResp, customer, name, amount, state string
 	var response []byte
 	var err error
+	var settlement, pastSettlement int
 
 	fmt.Println("Args: ", args)
 
@@ -60,8 +61,11 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to query chaincode. Got error: %s", err.Error())
 			jsonResp = "{\"Error\":\"" + errStr + "\"}"
+			logger.Error(jsonResp)
 			return nil, errors.New(jsonResp)
 		}
+
+		logger.Infof("Operation: %s | Response: %s", operation, string(response))
 
 	case "WithdrawFund":
 		f := "Withdraw"
@@ -75,37 +79,43 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", err.Error())
 			jsonResp = "{\"Error\":\"" + errStr + "\"}"
+			logger.Error(jsonResp)
 			return nil, errors.New(jsonResp)
 		}
 
+		logger.Infof("Operation: %s | Response: %s", operation, string(response))
+
 		jsonResp = "{\"Response of WithdrawFund\":\"" + string(response) + "\"}"
-		fmt.Printf("Operation: %s | Response: %s", operation, jsonResp)
+		logger.Infof("Operation: %s | Response: %s", operation, jsonResp)
 
 		// transaction was successful, charge Issuer
-		settlement, err := strconv.Atoi(amount)
+		settlement, err = strconv.Atoi(amount)
 		if err != nil {
+			logger.Error(err)
 			return nil, err
 		}
 
 		settlement = settlement + serviceCharge
 
-		existing, err := stub.GetState("IBI->ABI")
+		existingAsBytes, err := stub.GetState("IBI->ABI")
 		if err != nil {
+			logger.Error(err)
 			return nil, errors.New("Failed to get state" + err.Error())
 		}
 
-		existingSettlement := strings.Split(string(existing), " ")[3]
-
-		pastSettlement, err := strconv.Atoi(existingSettlement)
+		pastSettlement, err = strconv.Atoi(string(existingAsBytes))
 		if err != nil {
-			return nil, err
+			logger.Error(err)
+			return nil, errors.New("Error retrieving past settlement: " + err.Error())
 		}
 
-		state = fmt.Sprintf("IBI owes ABI " + strconv.Itoa(settlement+pastSettlement))
+		state = strconv.Itoa(settlement + pastSettlement)
+		logger.Info("state: ", state)
 
 		// Write amount which IBI owes to ABI back to the ledger
 		err = stub.PutState("IBI->ABI", []byte(state))
 		if err != nil {
+			logger.Error(err)
 			return nil, err
 		}
 
@@ -140,11 +150,13 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 	valAsbytes, err := stub.GetState(transactionName)
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to get state for " + transactionName + "\"}"
+		logger.Error(jsonResp)
 		return nil, errors.New(jsonResp)
 	}
 
 	fmt.Printf("Query chaincode successful. Got IBI->ABI %s\n", string(valAsbytes))
 	jsonResp = "{\"IBI Owes ABI\":\"" + string(valAsbytes) + "\"}"
+	logger.Error(jsonResp)
 	fmt.Printf("Query Response:%s\n", jsonResp)
 	return []byte(valAsbytes), nil
 
