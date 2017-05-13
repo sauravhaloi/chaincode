@@ -169,7 +169,7 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 	operation := args[1]
 	customer := args[2]
 
-	queryArgs := util.ToChaincodeArgs(operation, customer)
+	queryArgs := util.ToChaincodeArgs(operation, customer, "dummy1", "dummy2")
 
 	response, err = stub.InvokeChaincode(chaincodeURL, queryArgs)
 	if err != nil {
