@@ -123,8 +123,23 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return []byte(state), nil
 
 	case "Settlement":
-		// Write amount which IBI owes to ABI back to the ledger
-		err = stub.PutState("IBI->ABI", []byte(strconv.Itoa(0)))
+		logger.Info("Running Settlement")
+
+		dueAsBytes, err := stub.GetState("IBI->ABI")
+		if err != nil {
+			logger.Error(err)
+			return nil, errors.New("Failed to get state" + err.Error())
+		}
+
+		if dueAsBytes == nil {
+			logger.Info("IBI does not owe any dues to ABI")
+			return nil, nil
+		}
+
+		logger.Infof("IBI owes %s to ABI", string(dueAsBytes))
+
+		logger.Info("IBI has paid back to ABI all dues, commit it in the ledger")
+		err = stub.PutState("IBI->ABI", dueAsBytes)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
