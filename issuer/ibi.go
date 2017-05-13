@@ -161,17 +161,11 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 	var response []byte
 	var jsonResp string
 
-	if len(args) != 3 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 3")
-	}
-
 	chaincodeURL := args[0] //https://github.com/sauravhaloi/chaincode/issuer
 	operation := args[1]
 	customer := args[2]
 
 	queryArgs := util.ToChaincodeArgs(operation, customer)
-
-	logger.Info("Query Args: ", queryArgs)
 
 	response, err = stub.InvokeChaincode(chaincodeURL, queryArgs)
 	if err != nil {
