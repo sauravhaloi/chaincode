@@ -59,6 +59,8 @@ func (t *SampleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 func (t *SampleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	logger.Info("Invoke is running: " + function)
 
+	logger.Info("ibi Invoke args: ", args)
+
 	// Handle different functions
 	switch function {
 	case "Init":
@@ -160,6 +162,8 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 	var err error
 	var response []byte
 	var jsonResp string
+
+	logger.Info("ibi eodSettlement args: ", args)
 
 	chaincodeURL := args[0] //https://github.com/sauravhaloi/chaincode/issuer
 	operation := args[1]

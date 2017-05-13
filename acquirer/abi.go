@@ -43,7 +43,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	var err error
 	var settlement, pastSettlement int
 
-	fmt.Println("Args: ", args)
+	logger.Info("abi Invoke args: ", args)
 
 	chaincodeURL := args[0] //https://github.com/sauravhaloi/chaincode/issuer
 	operation := args[1]
