@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"time"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
@@ -35,16 +33,10 @@ func (t *SampleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		return nil, errors.New("Expecting integer value for customer account balance: " + err.Error())
 	}
 
-	logger.Info("Customer: %s, Available Balance: %d", customerName, currentBalance)
+	logger.Infof("Customer: %s, Available Balance: %d", customerName, currentBalance)
 
 	// Save the Customer info
 	account[customerName] = currentBalance
-
-	// Write the state to the ledger
-	err = stub.PutState("IBI-CC[init]: "+time.Now().String(), []byte(args[0]))
-	if err != nil {
-		return nil, err
-	}
 
 	return nil, nil
 }
@@ -166,15 +158,21 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 
 	var err error
 
-	due, err := stub.GetState("IBI->ABI")
+	dueAsBytes, err := stub.GetState("IBI->ABI")
 	if err != nil {
 		logger.Error(err)
-		return nil, err
+		return nil, errors.New("Failed to get state" + err.Error())
 	}
-	logger.Infof("IBI owes %s to ABI", string(due))
+
+	if dueAsBytes == nil {
+		logger.Info("IBI does not owe any dues to ABI")
+		return nil, nil
+	}
+
+	logger.Infof("IBI owes %s to ABI", string(dueAsBytes))
 
 	logger.Info("IBI pays back to ABI all dues, commit it in the ledger")
-	err = stub.PutState("IBI->ABI", due)
+	err = stub.PutState("IBI->ABI", dueAsBytes)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -182,7 +180,7 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 
 	logger.Info("EOD Settlement Done!")
 
-	return due, err
+	return dueAsBytes, err
 }
 
 func main() {
