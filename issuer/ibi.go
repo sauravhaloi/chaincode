@@ -74,6 +74,8 @@ func (t *SampleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return t.depositFund(stub, args)
 	case "Withdraw":
 		return t.withdrawFund(stub, args)
+	case "Settlement":
+		return t.eodSettlement(stub, args)
 	default:
 		logger.Error("Invoke did not find func: " + function)
 	}
@@ -157,6 +159,23 @@ func (t *SampleChaincode) withdrawFund(stub shim.ChaincodeStubInterface, args []
 	valAsbytes := []byte(strconv.Itoa(account[name]))
 
 	return valAsbytes, nil
+}
+
+func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	logger.Info("Running eodSettlement")
+
+	var err error
+
+	due := []byte(strconv.Itoa(0))
+
+	// Write amount which IBI owes to ABI back to the ledger
+	err = stub.PutState("IBI->ABI", due)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return due, err
 }
 
 func main() {
