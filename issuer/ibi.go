@@ -179,7 +179,7 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 		return nil, errors.New(jsonResp)
 	}
 
-	logger.Infof("Response: %s", operation, string(response))
+	logger.Infof("Operation: %s | Response: %s", operation, string(response))
 
 	/*
 

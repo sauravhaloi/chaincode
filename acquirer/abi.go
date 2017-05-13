@@ -135,7 +135,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		logger.Infof("IBI owes %s to ABI", string(dueAsBytes))
 
 		logger.Info("IBI has paid back to ABI all dues, commit it in the ledger")
-		err = stub.PutState("IBI->ABI", dueAsBytes)
+		err = stub.PutState("IBI->ABI", []byte(strconv.Itoa(0)))
 		if err != nil {
 			logger.Error(err)
 			return nil, err
