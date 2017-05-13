@@ -161,15 +161,15 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 	var response []byte
 	var jsonResp string
 
-	if len(args) != 1 {
+	if len(args) != 3 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the customer and value to set")
 	}
 
-	f := "Settlement"
-
 	chaincodeURL := args[0] //https://github.com/sauravhaloi/chaincode/issuer
+	operation := args[1]
+	customer := args[2]
 
-	queryArgs := util.ToChaincodeArgs(f)
+	queryArgs := util.ToChaincodeArgs(operation, customer)
 
 	fmt.Println("Query Args: ", queryArgs)
 
@@ -181,7 +181,7 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 		return nil, errors.New(jsonResp)
 	}
 
-	logger.Infof("Response: %s", f, string(response))
+	logger.Infof("Response: %s", operation, string(response))
 
 	/*
 
