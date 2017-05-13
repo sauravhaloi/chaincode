@@ -168,12 +168,14 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 
 	due := []byte(strconv.Itoa(0))
 
-	// Write amount which IBI owes to ABI back to the ledger
+	logger.Info("IBI pays back to ABI all dues, commit it in the ledger")
 	err = stub.PutState("IBI->ABI", due)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
+
+	logger.Info("EOD Settlement Done!")
 
 	return due, err
 }
