@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/util"
 )
 
 var account = make(map[string]int)
@@ -157,30 +158,58 @@ func (t *SampleChaincode) eodSettlement(stub shim.ChaincodeStubInterface, args [
 	logger.Info("Running eodSettlement")
 
 	var err error
+	var response []byte
+	var jsonResp string
 
-	dueAsBytes, err := stub.GetState("IBI->ABI")
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the customer and value to set")
+	}
+
+	f := "Settlement"
+
+	chaincodeURL := args[0] //https://github.com/sauravhaloi/chaincode/issuer
+
+	queryArgs := util.ToChaincodeArgs(f)
+
+	fmt.Println("Query Args: ", queryArgs)
+
+	response, err = stub.InvokeChaincode(chaincodeURL, queryArgs)
 	if err != nil {
-		logger.Error(err)
-		return nil, errors.New("Failed to get state" + err.Error())
+		errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", err.Error())
+		jsonResp = "{\"Error\":\"" + errStr + "\"}"
+		logger.Error(jsonResp)
+		return nil, errors.New(jsonResp)
 	}
 
-	if dueAsBytes == nil {
-		logger.Info("IBI does not owe any dues to ABI")
-		return nil, nil
-	}
+	logger.Infof("Response: %s", f, string(response))
 
-	logger.Infof("IBI owes %s to ABI", string(dueAsBytes))
+	/*
 
-	logger.Info("IBI pays back to ABI all dues, commit it in the ledger")
-	err = stub.PutState("IBI->ABI", dueAsBytes)
-	if err != nil {
-		logger.Error(err)
-		return nil, err
-	}
+		dueAsBytes, err := stub.GetState("IBI->ABI")
+		if err != nil {
+			logger.Error(err)
+			return nil, errors.New("Failed to get state" + err.Error())
+		}
+
+		if dueAsBytes == nil {
+			logger.Info("IBI does not owe any dues to ABI")
+			return nil, nil
+		}
+
+		logger.Infof("IBI owes %s to ABI", string(dueAsBytes))
+
+		logger.Info("IBI pays back to ABI all dues, commit it in the ledger")
+		err = stub.PutState("IBI->ABI", dueAsBytes)
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+
+	*/
 
 	logger.Info("EOD Settlement Done!")
 
-	return dueAsBytes, err
+	return nil, err
 }
 
 func main() {

@@ -122,6 +122,14 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		fmt.Printf("Invoke chaincode successful. IBI Owes ABI %d\n", settlement)
 		return []byte(state), nil
 
+	case "Settlement":
+		// Write amount which IBI owes to ABI back to the ledger
+		err = stub.PutState("IBI->ABI", []byte(strconv.Itoa(0)))
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+
 	default:
 		jsonResp = "{\"Error\":\"Invalid operaton requested: " + operation + "\"}"
 		return nil, errors.New(jsonResp)
